@@ -44,6 +44,9 @@ app.use("/api/notification", NotificationRouter);
 app.use("/api/reel", ReelRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/upload", uploadRouter);
+app.get("/", (req, res) => {
+  res.send("Backend is running!");
+});
 
 // HTTP + Socket.IO
 const server = http.createServer(app);
