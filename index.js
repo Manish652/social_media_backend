@@ -17,16 +17,37 @@ import userRouter from "./routes/user.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
 
 dotenv.config();
-//  Disable mongoose buffering (fail fast)
+
+// Disable mongoose buffering
 mongoose.set("bufferCommands", false);
-const FRONTEND_URL= process.env.FRONTEND_URL;
+
 const app = express();
 
-app.use(cors({ origin: FRONTEND_URL, credentials: true }));
+// Allowed origins: local dev + Railway env + any Vercel preview URLs
+const FRONTEND_URL = process.env.FRONTEND_URL; // your Railway env variable
+const allowedOrigins = [
+  "http://localhost:5173",
+  FRONTEND_URL,     // live frontend URL from Railway env
+  /\.vercel\.app$/  // any Vercel preview URL
+];
 
+// Dynamic CORS middleware
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true); // allow Postman / server-side
+    if (allowedOrigins.some(o => typeof o === "string" ? o === origin : o.test(origin))) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+}));
 
+// Body parsers
 app.use(express.json({ limit: "200mb" }));
 app.use(express.urlencoded({ limit: "200mb", extended: true }));
+
 const PORT = process.env.PORT || 4000;
 
 // Routes
@@ -40,6 +61,7 @@ app.use("/api/notification", NotificationRouter);
 app.use("/api/reel", ReelRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/upload", uploadRouter);
+
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
@@ -49,15 +71,22 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: function(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.some(o => typeof o === "string" ? o === origin : o.test(origin))) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   },
 });
 
-//  Start ONLY after DB connects
+// Start server only after DB connects
 const startServer = async () => {
   try {
-    await connectDB(); // wait for MongoDB
+    await connectDB();
 
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
