@@ -19,10 +19,10 @@ import uploadRouter from "./routes/upload.routes.js";
 dotenv.config();
 //  Disable mongoose buffering (fail fast)
 mongoose.set("bufferCommands", false);
-
+const FRONTEND_URL= process.env.FRONTEND_URL;
 const app = express();
 
-app.use(cors({ origin: "*", credentials: true }));
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
 
 app.use(express.json({ limit: "200mb" }));
@@ -49,7 +49,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: FRONTEND_URL,
     credentials: true,
   },
 });
