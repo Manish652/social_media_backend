@@ -28,12 +28,6 @@ export const createReel = async (req, res) => {
     });
 
     // Also create a post for the reel (so it shows in profile)
-    const post = await PostModel.create({
-      userId,
-      caption,
-      video: videoUrl,
-      image: null,
-    });
 
     // Notify followers about the new post
     try {
