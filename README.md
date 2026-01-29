@@ -46,13 +46,20 @@ real-world API design, authentication, and database integration.
 
 Create a .env file in the root directory:
 
-MONGO_URI=
-JWT_SECRET=
+MONGO_URI=***
+
+JWT_SECRET=***
+
 PORT=5000
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
-CLOUDINARY_UPLOAD_PRESET=
+
+CLOUDINARY_CLOUD_NAME=**
+
+CLOUDINARY_API_KEY=***
+
+CLOUDINARY_API_SECRET=***
+
+CLOUDINARY_UPLOAD_PRESET= ***
+
 FRONTEND_URL= https://vibeforlife.vercel.app
 
 # clone repository
