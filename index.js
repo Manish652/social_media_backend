@@ -1,10 +1,9 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import http from "http";
-import { Server } from "socket.io";
 import mongoose from "mongoose";
 import connectDB from "./configs/DBConnection.js";
+
 import Commentrouter from "./routes/comment.route.js";
 import FollowRouter from "./routes/Follow.routes.js";
 import LikeRouter from "./routes/like.route.js";
@@ -23,26 +22,32 @@ mongoose.set("bufferCommands", false);
 
 const app = express();
 
-// Allowed origins: local dev + Railway env + any Vercel preview URLs
-const FRONTEND_URL = process.env.FRONTEND_URL; // your Railway env variable
+const FRONTEND_URL = process.env.FRONTEND_URL;
+
 const allowedOrigins = [
   "http://localhost:5173",
-  FRONTEND_URL,     // live frontend URL from Railway env
-  /\.vercel\.app$/  // any Vercel preview URL
+  FRONTEND_URL,
+  /\.vercel\.app$/,
 ];
 
-// Dynamic CORS middleware
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true); // allow Postman / server-side
-    if (allowedOrigins.some(o => typeof o === "string" ? o === origin : o.test(origin))) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-}));
+// CORS
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.some((o) =>
+          typeof o === "string" ? o === origin : o.test(origin)
+        )
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
 
 // Body parsers
 app.use(express.json({ limit: "200mb" }));
@@ -66,29 +71,12 @@ app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
 
-// HTTP + Socket.IO
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: function(origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.some(o => typeof o === "string" ? o === origin : o.test(origin))) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  },
-});
-
-// Start server only after DB connects
+// Start server after DB connection
 const startServer = async () => {
   try {
     await connectDB();
 
-    server.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (err) {
