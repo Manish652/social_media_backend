@@ -1,5 +1,4 @@
 import CommentModel from "../models/CommentModel.js";
-import PostModel from "../models/PostModel.js";
 import ReelModel from "../models/ReelModel.js";
 import UserModel from "../models/UserModel.js";
 import { createNotification } from "./notification.controller.js";
@@ -27,14 +26,12 @@ export const createReel = async (req, res) => {
       thumbnailUrl,
     });
 
-    // Also create a post for the reel (so it shows in profile)
-
-    // Notify followers about the new post
+    // Notify followers about the new reel
     try {
       const author = await UserModel.findById(userId).select("followers");
       if (author?.followers?.length) {
         await Promise.all(
-          author.followers.map(fid => createNotification("post", userId, fid, post._id))
+          author.followers.map(fid => createNotification("reel", userId, fid, reel._id))
         );
       }
     } catch (e) {
@@ -45,7 +42,6 @@ export const createReel = async (req, res) => {
       success: true,
       message: "Reel uploaded successfully",
       reel,
-      post,
     });
   } catch (err) {
     console.error("Create reel error:", err);
@@ -116,17 +112,6 @@ export const deleteReel = async (req, res) => {
 
     // Delete the reel
     await reel.deleteOne();
-
-    // Also delete the associated post (find by video URL and userId)
-
-    try {
-      await PostModel.findOneAndDelete({
-        userId: userId,
-        video: reel.videoUrl
-      });
-    } catch (e) {
-      console.error("Failed to delete associated post:", e.message);
-    }
 
     res.json({ success: true, message: "Reel deleted successfully" });
   } catch (err) {
