@@ -63,7 +63,7 @@ CLOUDINARY_UPLOAD_PRESET= ***
 FRONTEND_URL= https://vibeforlife.vercel.app
 
 # clone repository
-git clone https://github.com/your-username/project-backend.git
+git clone https://github.com/Manish652/social_media_backend.git
 
 # install dependencies
 npm install
