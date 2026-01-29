@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import connectDB from "./configs/DBConnection.js";
-
 import Commentrouter from "./routes/comment.route.js";
 import FollowRouter from "./routes/Follow.routes.js";
 import LikeRouter from "./routes/like.route.js";
@@ -14,13 +13,20 @@ import searchRouter from "./routes/search.routes.js";
 import StoryRouter from "./routes/story.routes.js";
 import userRouter from "./routes/user.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+
+
 
 dotenv.config();
 
 // Disable mongoose buffering
 mongoose.set("bufferCommands", false);
 
+
 const app = express();
+app.set("trust proxy", 1);
+
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -31,6 +37,16 @@ const allowedOrigins = [
 ];
 
 // CORS
+
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per IP
+  standardHeaders: true,   // RateLimit-* headers
+  legacyHeaders: false
+});
+
+
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -49,9 +65,14 @@ app.use(
   })
 );
 
-// Body parsers
-app.use(express.json({ limit: "200mb" }));
-app.use(express.urlencoded({ limit: "200mb", extended: true }));
+app.use(
+  helmet({
+    contentSecurityPolicy: false
+  })
+);
+app.use("/api", limiter);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 const PORT = process.env.PORT || 4000;
 
@@ -70,6 +91,15 @@ app.use("/api/upload", uploadRouter);
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
+app.use((err, req, res, next) => {
+  console.error(err);
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: "Internal server error"
+  });
+});
+
 
 // Start server after DB connection
 const startServer = async () => {
