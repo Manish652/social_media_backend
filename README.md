@@ -1,4 +1,4 @@
-# Project Name –Social Media Backend API
+# Social Media Backend API
 
 Backend service for VibeMedia, a full-stack social media web application built to demonstrate
 real-world API design, authentication, and database integration.
@@ -76,6 +76,7 @@ npm run dev
 Manish Bhunia
 
 GitHub: https: https://github.com/Manish652/
+
 LinkedIn: https: https://www.linkedin.com/in/manish-bhunia-99637a28b/
 
 
