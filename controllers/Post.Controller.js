@@ -74,8 +74,37 @@ export const getAllPost = async (req, res) => {
 // get single Post By Id
 
 export const getSinglePost = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const post = await PostModel.findById(id)
+            .populate("userId", "username email profilePicture profilePic bio")
+            .populate({
+                path: "comments",
+                populate: {
+                    path: "user",
+                    select: "username profilePicture"
+                }
+            });
 
+        if (!post) {
+            return res.status(404).json({
+                success: false,
+                message: "Post not found"
+            });
+        }
 
+        return res.status(200).json({
+            success: true,
+            message: "Post fetched successfully",
+            post
+        });
+    } catch (err) {
+        console.error("Get single post error:", err);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch post"
+        });
+    }
 }
 
 // delete Post
