@@ -3,6 +3,6 @@ import { searchAll } from "../controllers/search.controller.js";
 
 const searchRouter = express.Router();
 
-searchRouter.get("/search",searchAll);
+searchRouter.get("/", searchAll);
 
 export default searchRouter;

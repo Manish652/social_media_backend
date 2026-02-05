@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import connectDB from "./configs/DBConnection.js";
+
 import Commentrouter from "./routes/comment.route.js";
 import FollowRouter from "./routes/Follow.routes.js";
 import LikeRouter from "./routes/like.route.js";
@@ -13,20 +14,22 @@ import searchRouter from "./routes/search.routes.js";
 import StoryRouter from "./routes/story.routes.js";
 import userRouter from "./routes/user.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
+import ChatRouter from "./routes/chat.routes.js";
+import messageRouter from "./routes/message.routes.js";
+
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
-
+import http from "http";
+import { Server } from "socket.io";
+import { initSocket } from "./socket/socketInstance.js";
+import { socketHandler } from "./socket/socket.js";
 
 dotenv.config();
-
-// Disable mongoose buffering
 mongoose.set("bufferCommands", false);
-
 
 const app = express();
 app.set("trust proxy", 1);
-
 
 const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -36,23 +39,21 @@ const allowedOrigins = [
   /\.vercel\.app$/,
 ];
 
-// CORS
-
-
+// rate limit
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 100 requests per IP
-  standardHeaders: true,   // RateLimit-* headers
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  standardHeaders: true,
   legacyHeaders: false
 });
 
-
+// middlewares
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin(origin, callback) {
       if (!origin) return callback(null, true);
       if (
-        allowedOrigins.some((o) =>
+        allowedOrigins.some(o =>
           typeof o === "string" ? o === origin : o.test(origin)
         )
       ) {
@@ -61,22 +62,16 @@ app.use(
         callback(new Error("Not allowed by CORS"));
       }
     },
-    credentials: true,
+    credentials: true
   })
 );
 
-app.use(
-  helmet({
-    contentSecurityPolicy: false
-  })
-);
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use("/api", limiter);
 app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-const PORT = process.env.PORT || 4000;
-
-// Routes
+// routes
 app.use("/api/user", userRouter);
 app.use("/api/post", PostRouter);
 app.use("/api/like", LikeRouter);
@@ -87,31 +82,43 @@ app.use("/api/notification", NotificationRouter);
 app.use("/api/reel", ReelRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/upload", uploadRouter);
+app.use("/api/chat", ChatRouter);
+app.use("/api/message", messageRouter);
 
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
+
+// error handler
 app.use((err, req, res, next) => {
   console.error(err);
-
-  res.status(err.status || 500).json({
-    success: false,
-    message: "Internal server error"
-  });
+  res.status(500).json({ success: false, message: "Internal server error" });
 });
 
+// socket server
+const server = http.createServer(app);
 
-// Start server after DB connection
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  }
+});
+
+initSocket(io);
+socketHandler(io);
+
+// start server
+const PORT = process.env.PORT || 4000;
+
 const startServer = async () => {
   try {
     await connectDB();
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port http://localhost:${PORT} `);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
   } catch (err) {
     console.error("❌ Failed to start server", err);
-    process.exit(1);
   }
 };
 
