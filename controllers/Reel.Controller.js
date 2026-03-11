@@ -8,7 +8,6 @@ export const createReel = async (req, res) => {
   try {
     const userId = req.user._id;
     const { caption, videoUrl } = req.body;
-
     if (!videoUrl) {
       return res.status(400).json({ success: false, message: "Video URL is required" });
     }
@@ -25,7 +24,6 @@ export const createReel = async (req, res) => {
       videoUrl,
       thumbnailUrl,
     });
-
     // Notify followers about the new reel
     try {
       const author = await UserModel.findById(userId).select("followers");
@@ -55,7 +53,6 @@ export const getAllReels = async (req, res) => {
     const reels = await ReelModel.find()
       .populate("userId", "username profilePicture")
       .sort({ createdAt: -1 });
-
     res.json({
       success: true,
       reels,

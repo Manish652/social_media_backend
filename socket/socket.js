@@ -17,27 +17,41 @@ export const socketHandler = (io) => {
       if (!user) {
         return next(new Error("User not found"));
       }
-      socket.userId = user._id;
+      socket.userId = user._id.toString();
       next();
     } catch (error) {
+      console.error("Socket auth error:", error.message);
       next(new Error("Authentication error"));
     }
   });
 
   io.on("connection", (socket) => {
-    const userId = socket.userId.toString();
-    console.log("User connected:", userId, "Socket ID:", socket.id);
+    const userId = socket.userId;
+    console.log("✅ User connected:", userId, "Socket ID:", socket.id);
+
+    // Store user's socket ID
     onlineUsers.set(userId, socket.id);
 
-    // Emit online status to all users
-    io.emit("userOnline", userId);
+    // Send current online users to the newly connected user
+    socket.emit("getOnlineUsers", Array.from(onlineUsers.keys()));
+
+    // Broadcast to all other users that this user is online
+    socket.broadcast.emit("userOnline", userId);
+
+    console.log("📊 Online users:", Array.from(onlineUsers.keys()));
 
     socket.on("disconnect", () => {
-      console.log("User disconnected:", userId, "Socket ID:", socket.id);
+      console.log("❌ User disconnected:", userId, "Socket ID:", socket.id);
       onlineUsers.delete(userId);
 
-      // Emit offline status to all users
+      // Broadcast to all users that this user is offline
       io.emit("userOffline", userId);
+
+      console.log("📊 Online users after disconnect:", Array.from(onlineUsers.keys()));
+    });
+
+    socket.on("error", (error) => {
+      console.error("Socket error for user", userId, ":", error);
     });
   });
 }
@@ -49,3 +63,9 @@ export const getReceiverSocketId = (userId) => {
 export const isUserOnline = (userId) => {
   return onlineUsers.has(userId.toString());
 }
+
+export const getAllOnlineUsers = () => {
+  return Array.from(onlineUsers.keys());
+}
+
+

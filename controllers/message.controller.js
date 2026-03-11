@@ -10,10 +10,19 @@ const sendMessage = async (req, res) => {
     const senderId = req.user._id;
     const { chatId, receiverId, text, image } = req.body;
 
-    console.log("[sendMessage] Request:", { senderId: senderId.toString(), chatId, receiverId, text });
+    console.log("[sendMessage] Request:", {
+      senderId: senderId.toString(),
+      chatId,
+      receiverId: receiverId.toString(),
+      text: text?.substring(0, 50)
+    });
 
     if (!chatId || !receiverId) {
       return res.status(400).json({ message: "Missing fields" });
+    }
+
+    if (!text && !image) {
+      return res.status(400).json({ message: "Message cannot be empty" });
     }
 
     const message = await MessageModel.create({
@@ -24,7 +33,7 @@ const sendMessage = async (req, res) => {
       image
     });
 
-    console.log("[sendMessage] Message created:", message._id);
+    console.log("[sendMessage] ✅ Message created:", message._id);
 
     await ChatModel.findByIdAndUpdate(chatId, {
       lastMessage: message._id
@@ -33,29 +42,39 @@ const sendMessage = async (req, res) => {
     // Create notification for receiver
     await createNotification("message", senderId, receiverId, null);
 
+    const io = getIo();
+
     // Emit to receiver
     const receiverSocketId = getReceiverSocketId(receiverId.toString());
     console.log("[sendMessage] Receiver socket ID:", receiverSocketId);
+
     if (receiverSocketId) {
-      getIo().to(receiverSocketId).emit("newMessage", message);
-      console.log("[sendMessage] Emitted to receiver");
+      io.to(receiverSocketId).emit("newMessage", {
+        ...message.toObject(),
+        senderId: senderId.toString(),
+        receiverId: receiverId.toString()
+      });
+      console.log("[sendMessage] ✅ Emitted to receiver:", receiverSocketId);
     } else {
-      console.log("[sendMessage] Receiver not online");
+      console.log("[sendMessage] ⚠️ Receiver not online");
     }
 
     // Also emit to sender (for multi-device support)
     const senderSocketId = getReceiverSocketId(senderId.toString());
     console.log("[sendMessage] Sender socket ID:", senderSocketId);
-    if (senderSocketId) {
-      getIo().to(senderSocketId).emit("newMessage", message);
-      console.log("[sendMessage] Emitted to sender");
-    } else {
-      console.log("[sendMessage] Sender not online");
+
+    if (senderSocketId && senderSocketId !== receiverSocketId) {
+      io.to(senderSocketId).emit("newMessage", {
+        ...message.toObject(),
+        senderId: senderId.toString(),
+        receiverId: receiverId.toString()
+      });
+      console.log("[sendMessage] ✅ Emitted to sender:", senderSocketId);
     }
 
     res.status(201).json(message);
   } catch (error) {
-    console.error("Send message error:", error);
+    console.error("❌ Send message error:", error);
     res.status(500).json({ message: "Failed to send message" });
   }
 };

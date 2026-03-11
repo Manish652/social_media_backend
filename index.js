@@ -4,26 +4,26 @@ import express from "express";
 import mongoose from "mongoose";
 import connectDB from "./configs/DBConnection.js";
 
+import ChatRouter from "./routes/chat.routes.js";
 import Commentrouter from "./routes/comment.route.js";
 import FollowRouter from "./routes/Follow.routes.js";
 import LikeRouter from "./routes/like.route.js";
+import messageRouter from "./routes/message.routes.js";
 import NotificationRouter from "./routes/notification.routes.js";
 import PostRouter from "./routes/Post.routes.js";
 import ReelRouter from "./routes/reel.routes.js";
 import searchRouter from "./routes/search.routes.js";
 import StoryRouter from "./routes/story.routes.js";
-import userRouter from "./routes/user.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
-import ChatRouter from "./routes/chat.routes.js";
-import messageRouter from "./routes/message.routes.js";
+import userRouter from "./routes/user.routes.js";
 
-import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 import http from "http";
 import { Server } from "socket.io";
-import { initSocket } from "./socket/socketInstance.js";
 import { socketHandler } from "./socket/socket.js";
+import { initSocket } from "./socket/socketInstance.js";
 
 dotenv.config();
 mongoose.set("bufferCommands", false);
@@ -97,12 +97,23 @@ app.use((err, req, res, next) => {
 
 // socket server
 const server = http.createServer(app);
-
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.some(o =>
+          typeof o === "string" ? o === origin : o.test(origin)
+        )
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true
-  }
+  },
+  transports: ['websocket', 'polling']
 });
 
 initSocket(io);

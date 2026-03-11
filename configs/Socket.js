@@ -3,12 +3,11 @@ import http from "http";
 import { Server } from "socket.io";
 
 const app = express();
-// Allowed origins: local dev + Railway env + any Vercel preview URLs
 const FRONTEND_URL = process.env.FRONTEND_URL; // your Railway env variable
 const allowedOrigins = [
   "http://localhost:5173",
-  FRONTEND_URL,     // live frontend URL from Railway env
-  /\.vercel\.app$/  // any Vercel preview URL
+  FRONTEND_URL,   
+  /\.vercel\.app$/  
 ];
 
 const server = http.createServer(app);
@@ -35,7 +34,7 @@ export const getReceiverSocketId = (receiverId) => {
 };
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
+ // console.log("A user connected", socket.id);
 
   // Handle user connection
   socket.on("setup", (userId) => {
