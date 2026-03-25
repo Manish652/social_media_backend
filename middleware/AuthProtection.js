@@ -3,15 +3,14 @@ import UserModel from "../models/UserModel.js";
 import dotenv from "dotenv";
 
 dotenv.config();
-const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
-
+const JWT_SECRET_ACCESSTOKEN = process.env.JWT_SECRET_ACCESSTOKEN || "my_jwt_secret_access_token";
 
 const AuthProtection = async (req, res, next) => {
     let token;
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             token = req.headers.authorization.split(' ')[1];
-            const decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET_ACCESSTOKEN);
             req.user = await UserModel.findById(decoded.userId).select('-password');
             if (!req.user) {
                 console.error('Not authorized, user not found for token');

@@ -174,3 +174,38 @@ export const updatePost = async (req, res) => {
         })
     }
 }
+
+// toggle save post
+export const toggleSavePost = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { id } = req.params;
+        
+        const user = await UserModel.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        
+        const post = await PostModel.findById(id);
+        if (!post) {
+            return res.status(404).json({ success: false, message: "Post not found" });
+        }
+        
+        const savedArray = user.savedPosts || [];
+        const isSaved = savedArray.some(savedId => savedId.toString() === id.toString());
+        
+        if (isSaved) {
+            user.savedPosts = savedArray.filter(postId => postId.toString() !== id.toString());
+            await user.save();
+            return res.status(200).json({ success: true, message: "Post removed from saved", type: "unsaved" });
+        } else {
+            user.savedPosts = savedArray;
+            user.savedPosts.push(id);
+            await user.save();
+            return res.status(200).json({ success: true, message: "Post saved successfully", type: "saved" });
+        }
+    } catch (err) {
+        console.error("Toggle save post error:", err);
+        return res.status(500).json({ success: false, message: "Failed to save post" });
+    }
+}

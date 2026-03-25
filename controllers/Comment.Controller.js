@@ -21,6 +21,8 @@ export const addcomment = async (req,res)=>{
             text:text
         });
 
+        const populatedComment = await CommentModel.findById(newComment._id).populate("user", "username profilePicture");
+
         // keep Post.comments array in sync
         try {
             await PostModel.findByIdAndUpdate(postId, { $addToSet: { comments: newComment._id } });
@@ -35,7 +37,7 @@ export const addcomment = async (req,res)=>{
         return res.status(200).json({
             success:true,
             message:"Comment added successfully",
-            comment:newComment
+            comment: populatedComment
         })
     }catch(err){
         console.log(err);

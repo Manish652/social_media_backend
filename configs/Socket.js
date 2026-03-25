@@ -3,7 +3,7 @@ import http from "http";
 import { Server } from "socket.io";
 
 const app = express();
-const FRONTEND_URL = process.env.FRONTEND_URL; // your Railway env variable
+const FRONTEND_URL = process.env.FRONTEND_URL; 
 const allowedOrigins = [
   "http://localhost:5173",
   FRONTEND_URL,   

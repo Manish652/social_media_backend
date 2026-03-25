@@ -32,7 +32,6 @@ const storySchema = new mongoose.Schema({
     trim: true,
     default: "#000000"
   },
-  // Story duration in hours (2, 6, 12, 24)
   duration: {
     type: Number,
     enum: [2, 6, 12, 24],
