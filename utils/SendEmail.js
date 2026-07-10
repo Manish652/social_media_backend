@@ -1,43 +1,34 @@
-import nodemailer from "nodemailer";
-
-// Lazy transporter - created on first use, not at module load
-// This avoids cold-start connection hangs on live hosting
-let _transporter = null;
-
-function getTransporter() {
-  if (!_transporter) {
-    if (!process.env.BRAVO_API_KEY || !process.env.BRAVO_EMAIl) {
-        throw new Error("Brevo SMTP credentials (BRAVO_API_KEY, BRAVO_EMAIl) are missing in .env");
-    }
-
-    _transporter = nodemailer.createTransport({
-      host: "smtp-relay.brevo.com",
-      port: 587,
-      auth: {
-        user: process.env.BRAVO_EMAIl,
-        pass: process.env.BRAVO_API_KEY, // xsmtpsib-... key
-      },
-      // Crucial: short timeouts so it fails fast instead of hanging forever
-      connectionTimeout: 8000,   // 8s to connect
-      greetingTimeout: 8000,     // 8s for EHLO
-      socketTimeout: 10000,      // 10s socket inactivity
-      pool: false,               // Don't pool – create fresh connection each time
-    });
-  }
-  return _transporter;
-}
-
-// Reset transporter on failure so next call gets a fresh one
-function resetTransporter() {
-  _transporter = null;
-}
+// Using fetch to call Brevo's REST API directly
+// This avoids ALL SMTP connection issues, timeouts, and port blocking (Vercel blocks SMTP ports 587/465)
 
 const sendEmail = async (email, otp) => {
-  const mailOptions = {
-    from: `"Vibe ✨" <${process.env.BRAVO_EMAIl}>`,
-    to: email,
+  const apiKey = process.env.BRAVO_API_KEY;
+  const fromEmail = process.env.BRAVO_EMAIl;
+
+  if (!apiKey || !fromEmail) {
+    throw new Error("Brevo credentials (BRAVO_API_KEY, BRAVO_EMAIl) are missing in the Live Environment variables!");
+  }
+
+  // Vercel blocks SMTP. We MUST use the HTTP API.
+  // The SMTP key (xsmtpsib-...) does NOT work with the HTTP API.
+  if (apiKey.startsWith("xsmtpsib")) {
+    throw new Error("SMTP Key detected. Vercel blocks SMTP. Please go to Brevo -> SMTP & API -> API Keys -> Generate a new API Key (starts with xkeysib-) and update your Vercel Environment Variables.");
+  }
+
+  const url = "https://api.brevo.com/v3/smtp/email";
+
+  const payload = {
+    sender: {
+      name: "Vibe ✨",
+      email: fromEmail,
+    },
+    to: [
+      {
+        email: email,
+      },
+    ],
     subject: "Your Vibe Verification Code",
-    html: `
+    htmlContent: `
     <!DOCTYPE html>
     <html>
     <head>
@@ -73,13 +64,25 @@ const sendEmail = async (email, otp) => {
   };
 
   try {
-    const transporter = getTransporter();
-    const info = await transporter.sendMail(mailOptions);
-    console.log("[SendEmail - Brevo SMTP] ✅ Email sent! ID:", info.messageId);
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "api-key": apiKey,
+        "accept": "application/json"
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed with status " + response.status);
+    }
+
+    const data = await response.json();
+    console.log("[SendEmail - Brevo API] ✅ Email sent! ID:", data.messageId);
   } catch (err) {
-    // Reset on failure so next request gets a fresh transporter
-    resetTransporter();
-    console.error("[SendEmail - Brevo SMTP] ❌ Failed:", err.message);
+    console.error("[SendEmail - Brevo API] ❌ Failed:", err.message);
     throw err;
   }
 };

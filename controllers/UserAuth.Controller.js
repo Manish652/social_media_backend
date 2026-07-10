@@ -28,9 +28,9 @@ export const sendOtp = async (req, res) => {
     await OtpModel.deleteMany({ email }); // Clear old OTPs for this email
     await OtpModel.create({ email, otp });
 
-    // Wrap email send in a 12-second timeout to prevent hanging forever on live servers
+    // Wrap email send in a 7-second timeout to beat Vercel's 10-second limit
     const emailTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Email service timed out. Please try again.")), 12000)
+      setTimeout(() => reject(new Error("Email service timed out. Please try again.")), 7000)
     );
 
     await Promise.race([sendEmail(email, otp), emailTimeout]);
@@ -40,11 +40,10 @@ export const sendOtp = async (req, res) => {
     console.error("Error sending OTP:", error.message);
 
     // Give user a helpful message
-    const msg = error.message.includes("timed out")
-      ? "Email service is slow right now. Please try again in a moment."
-      : error.message.includes("Invalid login") || error.message.includes("credentials")
-      ? "Email configuration error. Please contact support."
-      : "Failed to send OTP. Please check your email and try again.";
+    let msg = "Failed to send OTP. Please check your email and try again.";
+    if (error.message.includes("timed out")) msg = "Email service is slow right now. Please try again in a moment.";
+    if (error.message.includes("Vercel blocks SMTP") || error.message.includes("missing in the Live")) msg = error.message;
+    if (error.message.includes("Invalid login")) msg = "Email configuration error. Please contact support.";
 
     return res.status(500).json({ message: msg });
   }
