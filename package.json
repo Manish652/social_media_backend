@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
@@ -24,6 +25,7 @@
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
     "nodemailer": "^8.0.4",
+    "resend": "^6.17.2",
     "socket.io": "^4.8.3"
   }
 }

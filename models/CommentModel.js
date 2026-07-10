@@ -13,15 +13,22 @@ const commentSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
-    createdAt:{
-        type: Date,
-        default: Date.now
+    // For nested replies: reference to parent comment
+    parentComment: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+        default: null
     },
-    updatedAt:{
-        type: Date,
-        default: Date.now
-    }
-    
+    // Array of reply comment IDs
+    replies: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment"
+    }],
+    // Number of likes on a comment
+    likes: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User"
+    }],
 },{timestamps:true});
 
 const CommentModel = mongoose.model("Comment",commentSchema);

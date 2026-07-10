@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/UserModel.js";
 import OtpModel from "../models/OtpModel.js";
-import nodemailer from "nodemailer";
 import sendEmail from "../utils/SendEmail.js";
 import genarateOtp from "../utils/GenarateOtp.js";
 import genarateAccessToken from "../utils/GenarateAcessToken.js";
@@ -25,17 +24,29 @@ export const sendOtp = async (req, res) => {
 
     const otp = genarateOtp();
 
+    // Save OTP first (even if email fails, we can retry)
+    await OtpModel.deleteMany({ email }); // Clear old OTPs for this email
     await OtpModel.create({ email, otp });
 
-    await sendEmail(email, otp);
+    // Wrap email send in a 12-second timeout to prevent hanging forever on live servers
+    const emailTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Email service timed out. Please try again.")), 12000)
+    );
 
-    return res.status(200).json({ message: "OTP sent successfully to your email" });
+    await Promise.race([sendEmail(email, otp), emailTimeout]);
+
+    return res.status(200).json({ message: "OTP sent successfully to your email! Check spam if not in inbox." });
   } catch (error) {
-    console.error("Error sending OTP:", error);
-    return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
-    });
+    console.error("Error sending OTP:", error.message);
+
+    // Give user a helpful message
+    const msg = error.message.includes("timed out")
+      ? "Email service is slow right now. Please try again in a moment."
+      : error.message.includes("Invalid login") || error.message.includes("credentials")
+      ? "Email configuration error. Please contact support."
+      : "Failed to send OTP. Please check your email and try again.";
+
+    return res.status(500).json({ message: msg });
   }
 };
 
@@ -272,5 +283,33 @@ export const editProfile = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+};
+
+// Get suggested users (not already following, excluding self), random 10
+export const getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUser = req.user;
+    const followingIds = (currentUser.following || []).map(String);
+    followingIds.push(String(currentUser._id));
+
+    // Use simple find + limit for broad compatibility
+    const users = await UserModel.find({
+      _id: { $nin: followingIds }
+    })
+      .select("_id username profilePicture bio followers")
+      .limit(10)
+      .lean();
+
+    // Shuffle randomly
+    for (let i = users.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [users[i], users[j]] = [users[j], users[i]];
+    }
+
+    return res.json(users.slice(0, 10));
+  } catch (error) {
+    console.error("getSuggestedUsers error:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

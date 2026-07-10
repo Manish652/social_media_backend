@@ -8,20 +8,21 @@ import { createNotification } from "./notification.controller.js";
 const sendMessage = async (req, res) => {
   try {
     const senderId = req.user._id;
-    const { chatId, receiverId, text, image } = req.body;
+    const { chatId, receiverId, text, image, video, mediaType } = req.body;
 
     console.log("[sendMessage] Request:", {
       senderId: senderId.toString(),
       chatId,
-      receiverId: receiverId.toString(),
-      text: text?.substring(0, 50)
+      receiverId: receiverId?.toString(),
+      text: text?.substring(0, 50),
+      mediaType
     });
 
     if (!chatId || !receiverId) {
       return res.status(400).json({ message: "Missing fields" });
     }
 
-    if (!text && !image) {
+    if (!text && !image && !video) {
       return res.status(400).json({ message: "Message cannot be empty" });
     }
 
@@ -30,7 +31,9 @@ const sendMessage = async (req, res) => {
       senderId,
       receiverId,
       text,
-      image
+      image,
+      video,
+      mediaType: mediaType || (image ? "image" : video ? "video" : null)
     });
 
     console.log("[sendMessage] ✅ Message created:", message._id);
@@ -44,16 +47,16 @@ const sendMessage = async (req, res) => {
 
     const io = getIo();
 
+    const messageObj = {
+      ...message.toObject(),
+      senderId: senderId.toString(),
+      receiverId: receiverId.toString()
+    };
+
     // Emit to receiver
     const receiverSocketId = getReceiverSocketId(receiverId.toString());
-    console.log("[sendMessage] Receiver socket ID:", receiverSocketId);
-
     if (receiverSocketId) {
-      io.to(receiverSocketId).emit("newMessage", {
-        ...message.toObject(),
-        senderId: senderId.toString(),
-        receiverId: receiverId.toString()
-      });
+      io.to(receiverSocketId).emit("newMessage", messageObj);
       console.log("[sendMessage] ✅ Emitted to receiver:", receiverSocketId);
     } else {
       console.log("[sendMessage] ⚠️ Receiver not online");
@@ -61,14 +64,8 @@ const sendMessage = async (req, res) => {
 
     // Also emit to sender (for multi-device support)
     const senderSocketId = getReceiverSocketId(senderId.toString());
-    console.log("[sendMessage] Sender socket ID:", senderSocketId);
-
     if (senderSocketId && senderSocketId !== receiverSocketId) {
-      io.to(senderSocketId).emit("newMessage", {
-        ...message.toObject(),
-        senderId: senderId.toString(),
-        receiverId: receiverId.toString()
-      });
+      io.to(senderSocketId).emit("newMessage", messageObj);
       console.log("[sendMessage] ✅ Emitted to sender:", senderSocketId);
     }
 

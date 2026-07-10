@@ -18,11 +18,17 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     text: String,
+    // Support for image, video, GIF media in DMs
     image: String,
+    video: String,
+    mediaType: {
+      type: String,
+      enum: ["image", "video", "gif", null],
+      default: null
+    },
   },
   { timestamps: true }
 );
 
-const MessageModel = mongoose.model("messages",messageSchema);
+const MessageModel = mongoose.model("messages", messageSchema);
 export default MessageModel;
-
