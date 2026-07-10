@@ -6,7 +6,7 @@ import { createNotification } from "./notification.controller.js";
 
 export const createPost = async (req, res) => {
     try {
-        const { caption, mediaUrl, mediaType } = req.body;
+        const { caption, mediaUrl, mediaType, tags } = req.body;
         const userId = req.user._id;
 
         if (!mediaUrl) {
@@ -15,11 +15,20 @@ export const createPost = async (req, res) => {
             console.log("[Client Upload] Using client-uploaded URL:", mediaUrl);
         }
 
+        // Process tags if provided
+        let processedTags = [];
+        if (tags && Array.isArray(tags)) {
+            processedTags = tags.map(tag => tag.trim()).filter(Boolean);
+        } else if (typeof tags === "string") {
+            processedTags = tags.split(",").map(tag => tag.trim()).filter(Boolean);
+        }
+
         const newpost = await PostModel.create({
             userId,
             caption,
             image: mediaType === "image" ? mediaUrl : null,
             video: mediaType === "video" ? mediaUrl : null,
+            tags: processedTags
         })
 
         // notify all followers about the new post (ignore failures)
@@ -160,8 +169,20 @@ export const updatePost = async (req, res) => {
                 message: "Unauthorized"
             })
         }
-        const { caption } = req.body;
-        await PostModel.findByIdAndUpdate(id, { caption });
+        const { caption, tags } = req.body;
+        
+        let updateData = { caption };
+        if (tags !== undefined) {
+            let processedTags = [];
+            if (Array.isArray(tags)) {
+                processedTags = tags.map(tag => typeof tag === 'string' ? tag.trim() : tag).filter(Boolean);
+            } else if (typeof tags === "string") {
+                processedTags = tags.split(",").map(tag => tag.trim()).filter(Boolean);
+            }
+            updateData.tags = processedTags;
+        }
+
+        await PostModel.findByIdAndUpdate(id, updateData);
         return res.status(200).json({
             success: true,
             message: "Post updated successfully"

@@ -7,12 +7,20 @@ import { createNotification } from "./notification.controller.js";
 export const createReel = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { caption, videoUrl } = req.body;
+    const { caption, videoUrl, tags } = req.body;
     if (!videoUrl) {
       return res.status(400).json({ success: false, message: "Video URL is required" });
     }
 
     console.log("[Client Upload] Using client-uploaded URL:", videoUrl);
+
+    // Process tags if provided
+    let processedTags = [];
+    if (tags && Array.isArray(tags)) {
+        processedTags = tags.map(tag => tag.trim()).filter(Boolean);
+    } else if (typeof tags === "string") {
+        processedTags = tags.split(",").map(tag => tag.trim()).filter(Boolean);
+    }
 
     // Generate thumbnail URL from video URL
     const thumbnailUrl = videoUrl.replace(/\.(mp4|mov|avi)$/i, ".jpg");
@@ -23,6 +31,7 @@ export const createReel = async (req, res) => {
       caption,
       videoUrl,
       thumbnailUrl,
+      tags: processedTags,
     });
     // Notify followers about the new reel
     try {

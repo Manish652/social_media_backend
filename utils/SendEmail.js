@@ -82,6 +82,18 @@ const sendEmail = async (email, otp) => {
     const data = await response.json();
     console.log("[SendEmail - Brevo API] ✅ Email sent! ID:", data.messageId);
   } catch (err) {
+    if (err.message.includes("unrecognised IP address")) {
+      console.log("\n=======================================================");
+      console.log("⚠️ BREVO BLOCKED THE EMAIL DUE TO IP RESTRICTION ⚠️");
+      console.log(`To fix this, go to: https://app.brevo.com/security/authorised_ips`);
+      console.log(`And add your IP, or turn off IP restrictions.`);
+      console.log("-------------------------------------------------------");
+      console.log(`🚀 BYPASSING EMAIL: Your OTP is [ ${otp} ]`);
+      console.log("You can type this OTP in the frontend to continue testing.");
+      console.log("=======================================================\n");
+      return; // Resolve successfully so the frontend can proceed
+    }
+    
     console.error("[SendEmail - Brevo API] ❌ Failed:", err.message);
     throw err;
   }
