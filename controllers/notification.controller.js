@@ -1,4 +1,6 @@
 import NotificationModel from "../models/NotificationModel.js";
+import { getReceiverSocketId } from "../socket/socket.js";
+import { getIo } from "../socket/socketInstance.js";
 
 //  Create Notification
 export const createNotification = async (type, fromUserId, toUserId, postId = null) => {
@@ -6,7 +8,7 @@ export const createNotification = async (type, fromUserId, toUserId, postId = nu
     // Prevent self-notifications
     if (fromUserId.toString() === toUserId.toString()) return;
 
-    // Avoid duplicate notification for same action (optional)
+    // Avoid duplicate notification for same action
     const exists = await NotificationModel.findOne({
       user: toUserId,
       fromUser: fromUserId,
@@ -15,12 +17,25 @@ export const createNotification = async (type, fromUserId, toUserId, postId = nu
     });
 
     if (!exists) {
-      await NotificationModel.create({
+      const notification = await NotificationModel.create({
         user: toUserId,
         fromUser: fromUserId,
         type,
         post: postId,
       });
+
+      // 🔴 Emit real-time notification to the receiver
+      try {
+        const receiverSocketId = getReceiverSocketId(toUserId.toString());
+        if (receiverSocketId) {
+          const io = getIo();
+          const populated = await notification.populate("fromUser", "username profilePicture");
+          io.to(receiverSocketId).emit("newNotification", populated);
+          console.log(`[Notification] ✅ Real-time notification sent to socket: ${receiverSocketId}`);
+        }
+      } catch (emitErr) {
+        console.warn("[Notification] Socket emit failed (non-fatal):", emitErr.message);
+      }
     }
   } catch (error) {
     console.error("Error creating notification:", error.message);
