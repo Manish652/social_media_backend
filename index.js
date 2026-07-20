@@ -64,8 +64,24 @@ app.use(errorHandler);
 // socket server
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: corsOptions,
-  transports: ['websocket', 'polling']
+  cors: {
+    origin: (origin, callback) => {
+      const allowed = [
+        "http://localhost:5173",
+        process.env.FRONTEND_URL,
+        /\.vercel\.app$/,
+      ];
+      if (!origin) return callback(null, true);
+      const isAllowed = allowed.some(o =>
+        typeof o === "string" ? o === origin : o?.test?.(origin)
+      );
+      callback(isAllowed ? null : new Error("Socket CORS blocked"), isAllowed);
+    },
+    credentials: true,
+    methods: ["GET", "POST"],
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
 });
 
 initSocket(io);

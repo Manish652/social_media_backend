@@ -12,7 +12,7 @@ export const socketHandler = (io) => {
       if (!token) {
         return next(new Error("Authentication error"));
       }
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET_ACCESSTOKEN || "my_jwt_secret_access_token");
       const user = await UserModel.findById(decoded.userId);
       if (!user) {
         return next(new Error("User not found"));
